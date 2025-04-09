@@ -1,9 +1,10 @@
+import { DateTime } from 'luxon'
 import { BaseModel, column, belongsTo } from '@adonisjs/lucid/orm'
 import type { BelongsTo } from '@adonisjs/lucid/types/relations'
-import { DateTime } from 'luxon'
 import User from './user.js'
+import Plan from './plan.js'
 
-export default class Notification extends BaseModel {
+export default class Subscription extends BaseModel {
   @column({ isPrimary: true })
   declare id: number
 
@@ -11,17 +12,23 @@ export default class Notification extends BaseModel {
   declare userId: number
 
   @column()
-  declare message: string
+  declare planId: number
 
   @column()
-  declare type: 'promotional' | 'subscription' | 'general' | 'admin_announcement' | 'security_alert'
+  declare active: boolean
 
-  @column({ consume: (val) => Boolean(val) })
-  declare isRead: boolean
+  @column()
+  declare status: 'pending' | 'approved' | 'expired' | 'future'
 
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
 
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+
   @belongsTo(() => User)
   declare user: BelongsTo<typeof User>
+
+  @belongsTo(() => Plan)
+  declare plan: BelongsTo<typeof Plan>
 }

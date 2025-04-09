@@ -1,31 +1,37 @@
-const UsersController = () => import('#controllers/users_controller');
-import router from '@adonisjs/core/services/router';
-import { middleware } from '#start/kernel';
+import router from '@adonisjs/core/services/router'
+import { middleware } from '#start/kernel'
+import AdminRequestsController from '#controllers/admin_requests_controller'
+import FlatOwnerProfilesController from '#controllers/flat_owner_profiles_controller'
+import TenantProfilesController from '#controllers/tenant_profiles_controller'
 
-function user() {
-  // Routes without middleware
+export default function userRoutes() {
   router
     .group(() => {
-      router.post('/login', [UsersController, 'loginUser']);
-      router.post('/password/reset-request', [UsersController, 'requestPasswordReset']);
-      router.post('/password/reset', [UsersController, 'resetPassword']);
-      router.post('/register-user', [UsersController, 'registerUser']);
-      router.get('/all', [UsersController, 'fetchAllUsers']);
+      router.post('/', [AdminRequestsController, 'store'])
+      router.get('/', [AdminRequestsController, 'index'])
     })
-    .prefix('/users');
+    .prefix('/admin-requests')
+    .use([middleware.auth()])
 
-  // Routes with middleware
   router
     .group(() => {
-      router.post('/upload-photos', [UsersController, 'uploadUserPhotos']);
-      router.get('/photos', [UsersController, 'fetchAllPhotos']);
-      router.get('/profile', [UsersController, 'fetchUserProfile']);
-      router.put('/profile', [UsersController, 'editUserProfile']);
+      router.post('/', [FlatOwnerProfilesController, 'store'])
+      router.get('/', [FlatOwnerProfilesController, 'show'])
+      router.put('/', [FlatOwnerProfilesController, 'update'])
+      router.get('/pending', [FlatOwnerProfilesController, 'pending'])
+      router.post('/:id/approve', [FlatOwnerProfilesController, 'approve'])
     })
-    .prefix('/users')
-    .use([middleware.auth()]);
+    .prefix('/flat-owner-profiles')
+    .use([middleware.auth()])
 
-  return router;
+  router
+    .group(() => {
+      router.post('/', [TenantProfilesController, 'store'])
+      router.get('/', [TenantProfilesController, 'show'])
+      router.put('/', [TenantProfilesController, 'update'])
+      router.get('/pending', [TenantProfilesController, 'pending'])
+      router.post('/:id/approve', [TenantProfilesController, 'approve'])
+    })
+    .prefix('/tenant-profiles')
+    .use([middleware.auth()])
 }
-
-export default user;

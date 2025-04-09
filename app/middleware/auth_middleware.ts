@@ -21,7 +21,6 @@ export default class AuthMiddleware {
           },
         })
       }
-      
 
       // Verify the token and get the user
       const auth = await Auth.verifyToken(token)
@@ -37,11 +36,10 @@ export default class AuthMiddleware {
       }
 
       // Attach the authenticated user to the context
-      (ctx.request.qs() as unknown as AuthRequest).isAuthenticated = true
-ctx.auth=auth
+      ;(ctx.request.qs() as unknown as AuthRequest).isAuthenticated = true
+      ctx.auth = auth
       // Proceed to next middleware or route handler
       return next()
-      
     } catch (error) {
       console.error('Authentication error:', error)
       return ctx.response.status(401).send({
