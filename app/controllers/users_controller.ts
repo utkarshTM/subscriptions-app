@@ -1,8 +1,10 @@
 import User from '#models/user'
 import SendResponse from '#helpers/send_response_helper'
 import type { HttpContext } from '@adonisjs/core/http'
+import { createUserValidator, updateUserValidator } from '#validators/user_validator'
 
 export default class UsersController {
+  // GET /users
   async index({ response }: HttpContext) {
     try {
       const users = await User.query().preload('role').preload('society')
@@ -14,6 +16,7 @@ export default class UsersController {
     }
   }
 
+  // GET /users/:id
   async show({ params, response }: HttpContext) {
     try {
       const user = await User.findOrFail(params.id)
@@ -26,7 +29,78 @@ export default class UsersController {
         .send(SendResponse.error('Failed to fetch user', 500, error.message))
     }
   }
+
+  // POST /users
+  async store({ request, response }: HttpContext) {
+    try {
+      const payload = await request.validateUsing(createUserValidator)
+      const user = await User.create(payload)
+      return response.status(201).send(SendResponse.success('User created successfully', user))
+    } catch (error) {
+      return response
+        .status(500)
+        .send(SendResponse.error('Failed to create user', 500, error.message))
+    }
+  }
+
+  // PUT /users/:id
+  async update({ params, request, response }: HttpContext) {
+    try {
+      const user = await User.findOrFail(params.id)
+      const payload = await request.validateUsing(updateUserValidator)
+      user.merge(payload)
+      await user.save()
+      return response.status(200).send(SendResponse.success('User updated successfully', user))
+    } catch (error) {
+      return response
+        .status(500)
+        .send(SendResponse.error('Failed to update user', 500, error.message))
+    }
+  }
+
+  // DELETE /users/:id
+  async destroy({ params, response }: HttpContext) {
+    try {
+      const user = await User.findOrFail(params.id)
+      await user.delete()
+      return response.status(200).send(SendResponse.success('User deleted successfully', user))
+    } catch (error) {
+      return response
+        .status(500)
+        .send(SendResponse.error('Failed to delete user', 500, error.message))
+    }
+  }
 }
+
+// import User from '#models/user'
+// import SendResponse from '#helpers/send_response_helper'
+// import type { HttpContext } from '@adonisjs/core/http'
+
+// export default class UsersController {
+//   async index({ response }: HttpContext) {
+//     try {
+//       const users = await User.query().preload('role').preload('society')
+//       return response.status(200).send(SendResponse.success('Users fetched successfully', users))
+//     } catch (error) {
+//       return response
+//         .status(500)
+//         .send(SendResponse.error('Failed to fetch users', 500, error.message))
+//     }
+//   }
+
+//   async show({ params, response }: HttpContext) {
+//     try {
+//       const user = await User.findOrFail(params.id)
+//       await user.load('role')
+//       await user.load('society')
+//       return response.status(200).send(SendResponse.success('User fetched successfully', user))
+//     } catch (error) {
+//       return response
+//         .status(500)
+//         .send(SendResponse.error('Failed to fetch user', 500, error.message))
+//     }
+//   }
+// }
 // import SendResponse from '#helpers/send_response_helper';
 // import User from '#models/user';
 // import UserDetails from '#models/user_detail';

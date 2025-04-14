@@ -6,7 +6,7 @@ export const createNotificationValidator = vine.compile(
       const user = await db.from('users').where('id', value).first()
       return !!user
     }),
-    message: vine.string().trim().minLength(5),
+    message: vine.string().trim().minLength(1),
     type: vine.enum([
       'promotional',
       'subscription',
@@ -14,5 +14,16 @@ export const createNotificationValidator = vine.compile(
       'admin_announcement',
       'security_alert',
     ]),
+    isRead: vine.boolean().optional(),
+  })
+)
+
+export const updateNotificationValidator = vine.compile(
+  vine.object({
+    message: vine.string().trim().optional(),
+    type: vine
+      .enum(['promotional', 'subscription', 'general', 'admin_announcement', 'security_alert'])
+      .optional(),
+    isRead: vine.boolean().optional(),
   })
 )

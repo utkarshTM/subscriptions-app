@@ -1,59 +1,59 @@
+import type { HttpContext } from '@adonisjs/core/http'
 import VehicleDetail from '#models/vehicle_detail'
+import SendResponse from '#helpers/send_response_helper'
 import {
   createVehicleDetailValidator,
   updateVehicleDetailValidator,
 } from '#validators/vehicle_detail_validator'
-import SendResponse from '#helpers/send_response_helper'
-import type { HttpContext } from '@adonisjs/core/http'
 
 export default class VehicleDetailsController {
-  async store({ request, response }: HttpContext) {
-    try {
-      const payload = await request.validateUsing(createVehicleDetailValidator)
-      const vehicle = await VehicleDetail.create(payload)
-      return response.status(201).send(SendResponse.success('Vehicle detail created', vehicle))
-    } catch (error) {
-      return response
-        .status(400)
-        .send(SendResponse.error('Failed to create vehicle detail', 400, error.message))
-    }
-  }
-
   async index({ response }: HttpContext) {
     try {
       const vehicles = await VehicleDetail.query().preload('user').preload('flat')
-      return response.status(200).send(SendResponse.success('Vehicle details fetched', vehicles))
+      return response.ok(SendResponse.success('Vehicle details fetched', vehicles))
     } catch (error) {
-      return response
-        .status(500)
-        .send(SendResponse.error('Failed to fetch vehicle details', 500, error.message))
+      return response.internalServerError(
+        SendResponse.error('Error fetching data', 500, error.message)
+      )
     }
   }
 
   async show({ params, response }: HttpContext) {
     try {
-      const vehicle = await VehicleDetail.query()
-        .where('id', params.id)
-        .preload('user')
-        .preload('flat')
-        .firstOrFail()
-      return response.status(200).send(SendResponse.success('Vehicle detail found', vehicle))
+      const vehicle = await VehicleDetail.findOrFail(params.id)
+      await vehicle.load('user')
+      await vehicle.load('flat')
+      return response.ok(SendResponse.success('Vehicle detail found', vehicle))
     } catch (error) {
-      return response
-        .status(404)
-        .send(SendResponse.error('Vehicle detail not found', 404, error.message))
+      return response.internalServerError(
+        SendResponse.error('Error fetching vehicle', 500, error.message)
+      )
+    }
+  }
+
+  async store({ request, response }: HttpContext) {
+    const data = await request.validateUsing(createVehicleDetailValidator)
+    try {
+      const vehicle = await VehicleDetail.create(data)
+      return response.created(SendResponse.success('Vehicle detail created', vehicle))
+    } catch (error) {
+      return response.internalServerError(
+        SendResponse.error('Error creating vehicle', 500, error.message)
+      )
     }
   }
 
   async update({ params, request, response }: HttpContext) {
+    const data = await request.validateUsing(updateVehicleDetailValidator)
     try {
-      const payload = await request.validateUsing(updateVehicleDetailValidator)
       const vehicle = await VehicleDetail.findOrFail(params.id)
-      vehicle.merge(payload)
+      vehicle.merge(data)
       await vehicle.save()
-      return response.status(200).send(SendResponse.success('Vehicle detail updated', vehicle))
+      return response.ok(SendResponse.success('Vehicle detail updated', vehicle))
     } catch (error) {
-      return response.status(400).send(SendResponse.error('Update failed', 400, error.message))
+      return response.internalServerError(
+        SendResponse.error('Error updating vehicle', 500, error.message)
+      )
     }
   }
 
@@ -61,9 +61,11 @@ export default class VehicleDetailsController {
     try {
       const vehicle = await VehicleDetail.findOrFail(params.id)
       await vehicle.delete()
-      return response.status(200).send(SendResponse.success('Vehicle detail deleted'))
+      return response.ok(SendResponse.success('Vehicle detail deleted', vehicle))
     } catch (error) {
-      return response.status(500).send(SendResponse.error('Delete failed', 500, error.message))
+      return response.internalServerError(
+        SendResponse.error('Error deleting vehicle', 500, error.message)
+      )
     }
   }
 }

@@ -6,8 +6,10 @@ export default function notificationsRoutes() {
   router
     .group(() => {
       router.get('/', [NotificationsController, 'index'])
+      router.get('/:id', [NotificationsController, 'show'])
       router.post('/', [NotificationsController, 'store'])
-      router.put('/:id/mark-read', [NotificationsController, 'markRead'])
+      router.put('/:id', [NotificationsController, 'update'])
+      router.delete('/:id', [NotificationsController, 'destroy'])
     })
     .prefix('/notifications')
     .use([middleware.auth()])

@@ -2,7 +2,6 @@ import { DateTime } from 'luxon'
 import { BaseModel, column, belongsTo } from '@adonisjs/lucid/orm'
 import type { BelongsTo } from '@adonisjs/lucid/types/relations'
 import Society from './society.js'
-import { Timestamp } from '#helpers/model_timestamp_helper'
 
 export default class SocietyAmenity extends BaseModel {
   @column({ isPrimary: true })

@@ -1,35 +1,29 @@
-import { BaseSchema } from '@adonisjs/lucid/schema'
+import vine from '@vinejs/vine'
 
-export default class Users extends BaseSchema {
-  protected tableName = 'users'
+export const createUserValidator = vine.compile(
+  vine.object({
+    name: vine.string().trim().minLength(3).maxLength(255),
+    email: vine.string().trim().email(),
+    phone: vine.string().trim().minLength(10).maxLength(15),
+    passwordHash: vine.string().minLength(6),
+    roleId: vine.number().exists(async (db, value) => {
+      const role = await db.from('roles').where('id', value).first()
+      return !!role
+    }),
+    societyId: vine.number().exists(async (db, value) => {
+      const society = await db.from('societies').where('id', value).first()
+      return !!society
+    }),
+  })
+)
 
-  async up() {
-    this.schema.createTable(this.tableName, (table) => {
-      table.increments('id').primary()
-      table.string('name').notNullable()
-      table.string('email').notNullable().unique()
-      table.string('phone').notNullable().unique()
-      table.string('password_hash').notNullable()
-      table
-        .integer('role_id')
-        .unsigned()
-        .references('id')
-        .inTable('roles')
-        .onDelete('CASCADE')
-        .notNullable()
-      table
-        .integer('society_id')
-        .unsigned()
-        .references('id')
-        .inTable('societies')
-        .onDelete('CASCADE')
-        .notNullable()
-      table.timestamp('created_at', { useTz: true }).notNullable()
-      table.timestamp('updated_at', { useTz: true }).notNullable()
-    })
-  }
-
-  async down() {
-    this.schema.dropTable(this.tableName)
-  }
-}
+export const updateUserValidator = vine.compile(
+  vine.object({
+    name: vine.string().trim().minLength(3).maxLength(255).optional(),
+    email: vine.string().trim().email().optional(),
+    phone: vine.string().trim().minLength(10).maxLength(15).optional(),
+    passwordHash: vine.string().minLength(6).optional(),
+    roleId: vine.number().optional(),
+    societyId: vine.number().optional(),
+  })
+)

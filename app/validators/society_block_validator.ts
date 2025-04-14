@@ -6,14 +6,15 @@ export const createSocietyBlockValidator = vine.compile(
       const society = await db.from('societies').where('id', value).first()
       return !!society
     }),
-    name: vine.string().trim().minLength(3).maxLength(255),
-    description: vine.string().trim().minLength(10),
+    name: vine.string().trim().minLength(2).maxLength(255),
+    description: vine.string().trim().minLength(5),
   })
 )
 
 export const updateSocietyBlockValidator = vine.compile(
   vine.object({
-    name: vine.string().trim().minLength(3).maxLength(255).optional(),
-    description: vine.string().trim().minLength(10).optional(),
+    societyId: vine.number().optional(),
+    name: vine.string().trim().minLength(2).maxLength(255).optional(),
+    description: vine.string().trim().minLength(5).optional(),
   })
 )

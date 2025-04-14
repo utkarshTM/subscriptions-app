@@ -1,145 +1,119 @@
 import FlatOwnerProfile from '#models/flat_owner_profile'
-import { DateTime } from 'luxon'
+import SendResponse from '#helpers/send_response_helper'
+import type { HttpContext } from '@adonisjs/core/http'
 import {
   createFlatOwnerProfileValidator,
   updateFlatOwnerProfileValidator,
   approveFlatOwnerProfileValidator,
 } from '#validators/flat_owner_profile_validator'
-import SendResponse from '#helpers/send_response_helper'
-import type { HttpContext } from '@adonisjs/core/http'
+import { DateTime } from 'luxon'
 
 export default class FlatOwnerProfilesController {
-  /**
-   * Create profile (self-registration or admin-created)
-   */
-  async store({ request, response, auth }: HttpContext) {
+  async index({ response }: HttpContext) {
     try {
-      const payload = await request.validateUsing(createFlatOwnerProfileValidator)
-      const user = auth.user!
-
-      const profile = await FlatOwnerProfile.create({
-        ...payload,
-        userId: user.id,
-        createdById: user.id,
-        status: 'pending',
-        possessionDate: payload.possessionDate ? DateTime.fromJSDate(payload.possessionDate) : null,
-        flatPurchaseDate: payload.flatPurchaseDate
-          ? DateTime.fromJSDate(payload.flatPurchaseDate)
-          : null,
-      })
-
-      return response
-        .status(201)
-        .send(SendResponse.success('Profile created successfully', profile))
-    } catch (error) {
-      return response
-        .status(500)
-        .send(SendResponse.error('Failed to create profile', 500, error.message))
-    }
-  }
-
-  /**
-   * Get current user's profile
-   */
-  async show({ response, auth }: HttpContext) {
-    try {
-      const user = auth.user!
-      const profile = await FlatOwnerProfile.query()
-        .where('user_id', user.id)
-        .preload('user')
-        .preload('flat')
-        .preload('block')
-        .firstOrFail()
-
-      return response
-        .status(200)
-        .send(SendResponse.success('Profile fetched successfully', profile))
-    } catch (error) {
-      return response
-        .status(500)
-        .send(SendResponse.error('Failed to fetch profile', 500, error.message))
-    }
-  }
-
-  /**
-   * Update profile (only by owner)
-   */
-  async update({ request, response, auth }: HttpContext) {
-    try {
-      const payload = await request.validateUsing(updateFlatOwnerProfileValidator)
-      const user = auth.user!
-      const profile = await FlatOwnerProfile.query().where('user_id', user.id).firstOrFail()
-
-      profile.merge({
-        ...payload,
-        possessionDate: payload.possessionDate
-          ? DateTime.fromJSDate(new Date(payload.possessionDate))
-          : null,
-        flatPurchaseDate: payload.flatPurchaseDate
-          ? DateTime.fromJSDate(new Date(payload.flatPurchaseDate))
-          : null,
-      })
-      await profile.save()
-
-      return response
-        .status(200)
-        .send(SendResponse.success('Profile updated successfully', profile))
-    } catch (error) {
-      return response
-        .status(500)
-        .send(SendResponse.error('Failed to update profile', 500, error.message))
-    }
-  }
-
-  /**
-   * List all pending profiles (admin only)
-   */
-  async pending({ response, auth }: HttpContext) {
-    try {
-      const user = auth.user!
-      if (user.role.name !== 'admin') {
-        return response.forbidden(SendResponse.error('Unauthorized', 403))
-      }
-
       const profiles = await FlatOwnerProfile.query()
-        .where('status', 'pending')
         .preload('user')
         .preload('flat')
         .preload('block')
+        .preload('createdBy')
+        .preload('approvedBy')
 
-      return response.status(200).send(SendResponse.success('Pending profiles fetched', profiles))
+      return response.ok(SendResponse.success('Flat owner profiles fetched', profiles))
     } catch (error) {
-      return response
-        .status(500)
-        .send(SendResponse.error('Failed to fetch pending profiles', 500, error.message))
+      return response.internalServerError(
+        SendResponse.error('Error fetching profiles', 500, error.message)
+      )
     }
   }
 
-  /**
-   * Approve/Reject profile (admin only)
-   */
-  async approve({ params, request, response, auth }: HttpContext) {
+  async show({ params, response }: HttpContext) {
     try {
-      const payload = await request.validateUsing(approveFlatOwnerProfileValidator)
-      const user = auth.user!
-      if (user.role.name !== 'admin') {
-        return response.forbidden(SendResponse.error('Unauthorized', 403))
-      }
+      const profile = await FlatOwnerProfile.findOrFail(params.id)
+      await profile.load('user')
+      await profile.load('flat')
+      await profile.load('block')
+      await profile.load('createdBy')
+      await profile.load('approvedBy')
 
+      return response.ok(SendResponse.success('Flat owner profile found', profile))
+    } catch (error) {
+      return response.internalServerError(
+        SendResponse.error('Error fetching profile', 500, error.message)
+      )
+    }
+  }
+
+  async store({ auth, request, response }: HttpContext) {
+    const data = await request.validateUsing(createFlatOwnerProfileValidator)
+
+    try {
+      const profile = await FlatOwnerProfile.create({
+        ...data,
+        possessionDate: data.possessionDate ? DateTime.fromJSDate(data.possessionDate) : null,
+        flatPurchaseDate: data.flatPurchaseDate ? DateTime.fromJSDate(data.flatPurchaseDate) : null,
+        userId: auth.user!.id,
+        createdById: auth.user!.id,
+        status: 'pending',
+      })
+
+      return response.created(SendResponse.success('Flat owner profile created', profile))
+    } catch (error) {
+      return response.internalServerError(
+        SendResponse.error('Error creating profile', 500, error.message)
+      )
+    }
+  }
+
+  async update({ params, request, response }: HttpContext) {
+    const data = await request.validateUsing(updateFlatOwnerProfileValidator)
+
+    try {
       const profile = await FlatOwnerProfile.findOrFail(params.id)
       profile.merge({
-        ...payload,
-        approvedById: user.id,
+        ...data,
+        possessionDate: data.possessionDate ? DateTime.fromJSDate(data.possessionDate) : null,
+        flatPurchaseDate: data.flatPurchaseDate ? DateTime.fromJSDate(data.flatPurchaseDate) : null,
+      })
+
+      await profile.save()
+
+      return response.ok(SendResponse.success('Flat owner profile updated', profile))
+    } catch (error) {
+      return response.internalServerError(
+        SendResponse.error('Error updating profile', 500, error.message)
+      )
+    }
+  }
+
+  async approve({ params, request, auth, response }: HttpContext) {
+    const data = await request.validateUsing(approveFlatOwnerProfileValidator)
+
+    try {
+      const profile = await FlatOwnerProfile.findOrFail(params.id)
+      profile.merge({
+        ...data,
+        approvedById: auth.user!.id,
       })
       await profile.save()
 
-      return response
-        .status(200)
-        .send(SendResponse.success(`Profile ${payload.status} successfully`, profile))
+      return response.ok(SendResponse.success('Flat owner profile status updated', profile))
     } catch (error) {
-      return response
-        .status(500)
-        .send(SendResponse.error('Failed to update profile status', 500, error.message))
+      return response.internalServerError(
+        SendResponse.error('Error approving profile', 500, error.message)
+      )
+    }
+  }
+
+  async destroy({ params, response }: HttpContext) {
+    try {
+      const profile = await FlatOwnerProfile.findOrFail(params.id)
+      await profile.delete()
+
+      return response.ok(SendResponse.success('Flat owner profile deleted', profile))
+    } catch (error) {
+      return response.internalServerError(
+        SendResponse.error('Error deleting profile', 500, error.message)
+      )
     }
   }
 }

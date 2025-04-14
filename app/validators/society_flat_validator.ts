@@ -18,6 +18,8 @@ export const createSocietyFlatValidator = vine.compile(
 
 export const updateSocietyFlatValidator = vine.compile(
   vine.object({
+    societyId: vine.number().optional(),
+    blockId: vine.number().optional(),
     flatNumber: vine.string().trim().minLength(1).maxLength(50).optional(),
     flatType: vine.enum(['1BHK', '2BHK', '3BHK', 'Penthouse']).optional(),
     isOccupied: vine.boolean().optional(),

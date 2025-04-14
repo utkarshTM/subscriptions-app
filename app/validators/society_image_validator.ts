@@ -7,12 +7,17 @@ export const createSocietyImageValidator = vine.compile(
       return !!society
     }),
     imageUrl: vine.string().trim(),
-    caption: vine.string().trim().optional(),
+    caption: vine.string().trim(),
+    uploadedById: vine.number().exists(async (db, value) => {
+      const user = await db.from('users').where('id', value).first()
+      return !!user
+    }),
   })
 )
 
 export const updateSocietyImageValidator = vine.compile(
   vine.object({
+    imageUrl: vine.string().trim().optional(),
     caption: vine.string().trim().optional(),
   })
 )

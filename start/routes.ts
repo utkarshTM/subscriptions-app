@@ -50,7 +50,7 @@
 //   })
 //   .prefix('/api')
 import router from '@adonisjs/core/services/router'
-import appRoutes from './routes/app.js'
+import appRoutes from './routes/roles.js'
 import notificationsRoutes from './routes/notifications.js'
 import societiesRoutes from './routes/societies.js'
 import userInteractionsRoutes from './routes/user_interactions.js'

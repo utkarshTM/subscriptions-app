@@ -1,39 +1,80 @@
-import SocietyImage from '#models/society_image'
-import { createSocietyImageValidator } from '#validators/society_image_validator'
-import SendResponse from '#helpers/send_response_helper'
 import type { HttpContext } from '@adonisjs/core/http'
+import SocietyImage from '#models/society_image'
+import SendResponse from '#helpers/send_response_helper'
+import {
+  createSocietyImageValidator,
+  updateSocietyImageValidator,
+} from '#validators/society_image_validator'
 
 export default class SocietyImagesController {
-  async store({ request, response, auth }: HttpContext) {
+  async index({ request, response }: HttpContext) {
     try {
-      const payload = await request.validateUsing(createSocietyImageValidator)
-      const user = auth.user!
+      const societyId = request.qs().societyId
+      const images = societyId
+        ? await SocietyImage.query().where('society_id', societyId).preload('uploadedBy')
+        : await SocietyImage.query().preload('uploadedBy')
 
-      const image = await SocietyImage.create({
-        ...payload,
-        uploadedById: user.id,
-      })
-
-      return response.status(201).send(SendResponse.success('Image uploaded successfully', image))
+      return response.ok(SendResponse.success('Society images fetched', images))
     } catch (error) {
-      return response
-        .status(500)
-        .send(SendResponse.error('Failed to upload image', 500, error.message))
+      return response.internalServerError(
+        SendResponse.error('Error fetching society images', 500, error.message)
+      )
     }
   }
 
-  async index({ params, response }: HttpContext) {
+  async show({ params, response }: HttpContext) {
     try {
-      const images = await SocietyImage.query()
-        .where('society_id', params.societyId)
-        .preload('society')
-        .preload('uploadedBy')
+      const image = await SocietyImage.findOrFail(params.id)
+      await image.load('society')
+      await image.load('uploadedBy')
 
-      return response.status(200).send(SendResponse.success('Images fetched successfully', images))
+      return response.ok(SendResponse.success('Society image found', image))
     } catch (error) {
-      return response
-        .status(500)
-        .send(SendResponse.error('Failed to fetch images', 500, error.message))
+      return response.internalServerError(
+        SendResponse.error('Error fetching society image', 500, error.message)
+      )
+    }
+  }
+
+  async store({ request, response }: HttpContext) {
+    const data = await request.validateUsing(createSocietyImageValidator)
+
+    try {
+      const image = await SocietyImage.create(data)
+      return response.created(SendResponse.success('Society image created', image))
+    } catch (error) {
+      return response.internalServerError(
+        SendResponse.error('Error creating society image', 500, error.message)
+      )
+    }
+  }
+
+  async update({ params, request, response }: HttpContext) {
+    const data = await request.validateUsing(updateSocietyImageValidator)
+
+    try {
+      const image = await SocietyImage.findOrFail(params.id)
+      image.merge(data)
+      await image.save()
+
+      return response.ok(SendResponse.success('Society image updated', image))
+    } catch (error) {
+      return response.internalServerError(
+        SendResponse.error('Error updating society image', 500, error.message)
+      )
+    }
+  }
+
+  async destroy({ params, response }: HttpContext) {
+    try {
+      const image = await SocietyImage.findOrFail(params.id)
+      await image.delete()
+
+      return response.ok(SendResponse.success('Society image deleted', image))
+    } catch (error) {
+      return response.internalServerError(
+        SendResponse.error('Error deleting society image', 500, error.message)
+      )
     }
   }
 }

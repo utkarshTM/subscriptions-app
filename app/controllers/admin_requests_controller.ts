@@ -1,68 +1,69 @@
 import AdminRequest from '#models/admin_request'
-import { createAdminRequestValidator } from '#validators/admin_request_validator'
 import SendResponse from '#helpers/send_response_helper'
 import type { HttpContext } from '@adonisjs/core/http'
+import {
+  createAdminRequestValidator,
+  updateAdminRequestValidator,
+} from '#validators/admin_request_validator'
 
 export default class AdminRequestsController {
-  /**
-   * Create admin request
-   */
-  async store({ request, response, auth }: HttpContext) {
+  async index({ response }: HttpContext) {
     try {
-      const payload = await request.validateUsing(createAdminRequestValidator)
-      const user = auth.user!
-
-      const existingRequest = await AdminRequest.query()
-        .where('user_id', user.id)
-        .where('society_id', payload.societyId)
-        .first()
-
-      if (existingRequest) {
-        return response.conflict(SendResponse.error('Request already exists', 409))
-      }
-
-      const adminRequest = await AdminRequest.create({
-        userId: user.id,
-        societyId: payload.societyId,
-        status: 'pending',
-      })
-
-      return response
-        .status(201)
-        .send(SendResponse.success('Admin request created successfully', adminRequest))
+      const requests = await AdminRequest.query()
+        .preload('user')
+        .preload('society')
+        .preload('reviewedBy')
+      return response.status(200).send(SendResponse.success('Admin requests fetched', requests))
     } catch (error) {
-      return response
-        .status(500)
-        .send(SendResponse.error('Failed to create admin request', 500, error.message))
+      return response.status(500).send(SendResponse.error('Failed to fetch', 500, error.message))
     }
   }
 
-  /**
-   * List all admin requests
-   */
-  async index({ response, auth }: HttpContext) {
+  async show({ params, response }: HttpContext) {
     try {
-      const user = auth.user!
-      let query = AdminRequest.query().preload('user').preload('society').preload('reviewedBy')
+      const request = await AdminRequest.findOrFail(params.id)
+      await request.load('user')
+      await request.load('society')
+      await request.load('reviewedBy')
+      return response.status(200).send(SendResponse.success('Admin request found', request))
+    } catch (error) {
+      return response.status(500).send(SendResponse.error('Failed to fetch', 500, error.message))
+    }
+  }
 
-      // Filter based on user role
-      if (user.role.name === 'super_admin') {
-        // Super admin sees all requests
-      } else if (user.role.name === 'admin') {
-        // Admin sees only requests for their society
-        query = query.where('society_id', user.societyId!)
-      } else {
-        return response.forbidden(SendResponse.error('Unauthorized to view requests', 403))
-      }
+  async store({ request, response }: HttpContext) {
+    const payload = await request.validateUsing(createAdminRequestValidator)
 
-      const requests = await query.exec()
+    try {
+      const created = await AdminRequest.create(payload)
+      return response.status(201).send(SendResponse.success('Admin request created', created))
+    } catch (error) {
+      return response.status(500).send(SendResponse.error('Failed to create', 500, error.message))
+    }
+  }
+
+  async update({ params, request, response }: HttpContext) {
+    const payload = await request.validateUsing(updateAdminRequestValidator)
+
+    try {
+      const requestToUpdate = await AdminRequest.findOrFail(params.id)
+      requestToUpdate.merge(payload)
+      await requestToUpdate.save()
       return response
         .status(200)
-        .send(SendResponse.success('Admin requests fetched successfully', requests))
+        .send(SendResponse.success('Admin request updated', requestToUpdate))
     } catch (error) {
-      return response
-        .status(500)
-        .send(SendResponse.error('Failed to fetch admin requests', 500, error.message))
+      return response.status(500).send(SendResponse.error('Failed to update', 500, error.message))
+    }
+  }
+
+  async destroy({ params, response }: HttpContext) {
+    try {
+      const req = await AdminRequest.findOrFail(params.id)
+      await req.delete()
+      return response.status(200).send(SendResponse.success('Admin request deleted', req))
+    } catch (error) {
+      return response.status(500).send(SendResponse.error('Failed to delete', 500, error.message))
     }
   }
 }

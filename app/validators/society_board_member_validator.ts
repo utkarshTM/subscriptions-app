@@ -1,5 +1,4 @@
 import vine from '@vinejs/vine'
-import { DateTime } from 'luxon'
 
 export const createSocietyBoardMemberValidator = vine.compile(
   vine.object({
@@ -11,16 +10,18 @@ export const createSocietyBoardMemberValidator = vine.compile(
       const user = await db.from('users').where('id', value).first()
       return !!user
     }),
-    designation: vine.string().trim().minLength(3).maxLength(100),
-    tenureStart: vine.date().afterOrEqual(DateTime.now().toISODate()),
-    tenureEnd: vine.date().optional(),
+    designation: vine.string().trim().minLength(2).maxLength(100),
+    tenureStart: vine.date(),
+    tenureEnd: vine.date().nullable().optional(),
   })
 )
 
 export const updateSocietyBoardMemberValidator = vine.compile(
   vine.object({
-    designation: vine.string().trim().minLength(3).maxLength(100).optional(),
+    societyId: vine.number().optional(),
+    userId: vine.number().optional(),
+    designation: vine.string().trim().minLength(2).maxLength(100).optional(),
     tenureStart: vine.date().optional(),
-    tenureEnd: vine.date().optional(),
+    tenureEnd: vine.date().nullable().optional(),
   })
 )

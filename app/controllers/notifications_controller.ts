@@ -1,55 +1,76 @@
 import Notification from '#models/notification'
-import { createNotificationValidator } from '#validators/notification_validator'
 import SendResponse from '#helpers/send_response_helper'
 import type { HttpContext } from '@adonisjs/core/http'
+import {
+  createNotificationValidator,
+  updateNotificationValidator,
+} from '#validators/notification_validator'
 
 export default class NotificationsController {
-  async index({ response, auth }: HttpContext) {
+  async index({ response }: HttpContext) {
     try {
-      const user = auth.user!
-      const notifications = await Notification.query()
-        .where('user_id', user.id)
-        .orderBy('created_at', 'desc')
-
-      return response.status(200).send(SendResponse.success('Notifications fetched', notifications))
+      const notifications = await Notification.query().preload('user')
+      return response.ok(SendResponse.success('Notifications fetched', notifications))
     } catch (error) {
-      return response
-        .status(500)
-        .send(SendResponse.error('Failed to fetch notifications', 500, error.message))
+      return response.internalServerError(
+        SendResponse.error('Error fetching notifications', 500, error.message)
+      )
+    }
+  }
+
+  async show({ params, response }: HttpContext) {
+    try {
+      const notification = await Notification.findOrFail(params.id)
+      await notification.load('user')
+
+      return response.ok(SendResponse.success('Notification found', notification))
+    } catch (error) {
+      return response.internalServerError(
+        SendResponse.error('Error fetching notification', 500, error.message)
+      )
     }
   }
 
   async store({ request, response }: HttpContext) {
-    try {
-      const payload = await request.validateUsing(createNotificationValidator)
-      const notification = await Notification.create(payload)
+    const data = await request.validateUsing(createNotificationValidator)
 
-      return response.status(201).send(SendResponse.success('Notification created', notification))
+    try {
+      const notification = await Notification.create(data)
+      return response.created(SendResponse.success('Notification created', notification))
     } catch (error) {
-      return response
-        .status(500)
-        .send(SendResponse.error('Failed to create notification', 500, error.message))
+      return response.internalServerError(
+        SendResponse.error('Error creating notification', 500, error.message)
+      )
     }
   }
 
-  async markRead({ params, response, auth }: HttpContext) {
-    try {
-      const user = auth.user!
-      const notification = await Notification.query()
-        .where('id', params.id)
-        .where('user_id', user.id)
-        .firstOrFail()
+  async update({ params, request, response }: HttpContext) {
+    const data = await request.validateUsing(updateNotificationValidator)
 
-      notification.isRead = true
+    try {
+      const notification = await Notification.findOrFail(params.id)
+
+      notification.merge(data)
       await notification.save()
 
-      return response
-        .status(200)
-        .send(SendResponse.success('Notification marked as read', notification))
+      return response.ok(SendResponse.success('Notification updated', notification))
     } catch (error) {
-      return response
-        .status(500)
-        .send(SendResponse.error('Failed to update notification', 500, error.message))
+      return response.internalServerError(
+        SendResponse.error('Error updating notification', 500, error.message)
+      )
+    }
+  }
+
+  async destroy({ params, response }: HttpContext) {
+    try {
+      const notification = await Notification.findOrFail(params.id)
+      await notification.delete()
+
+      return response.ok(SendResponse.success('Notification deleted', notification))
+    } catch (error) {
+      return response.internalServerError(
+        SendResponse.error('Error deleting notification', 500, error.message)
+      )
     }
   }
 }

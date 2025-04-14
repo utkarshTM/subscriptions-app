@@ -16,3 +16,12 @@ export const createFlatOccupancyHistoryValidator = vine.compile(
     remarks: vine.string().trim().optional(),
   })
 )
+
+export const updateFlatOccupancyHistoryValidator = vine.compile(
+  vine.object({
+    startDate: vine.date().optional(),
+    endDate: vine.date().optional(),
+    userType: vine.enum(['owner', 'tenant']).optional(),
+    remarks: vine.string().trim().optional(),
+  })
+)
