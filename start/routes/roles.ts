@@ -11,5 +11,4 @@ export default function appRoutes() {
       router.delete('/:id', [RolesController, 'destroy'])
     })
     .prefix('/roles')
-    .as('roles')
 }

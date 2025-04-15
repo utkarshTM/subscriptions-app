@@ -1,9 +1,107 @@
 import User from '#models/user'
 import SendResponse from '#helpers/send_response_helper'
 import type { HttpContext } from '@adonisjs/core/http'
+import hash from '@adonisjs/core/services/hash'
 import { createUserValidator, updateUserValidator } from '#validators/user_validator'
+import AccessToken from '#models/access_token'
+import { DateTime } from 'luxon'
+import crypto from 'crypto'
 
 export default class UsersController {
+  private generateSecureToken(): string {
+    return crypto.randomBytes(64).toString('hex')
+  }
+
+  async login({ request, response }: HttpContext) {
+    const { email, password } = request.only(['email', 'password'])
+
+    // Basic validation
+    if (!email || !password) {
+      return response.badRequest({
+        status: 'error',
+        message: 'Email and password are required',
+      })
+    }
+
+    try {
+      // Find user with relationships
+      const user = await User.query()
+        .where('email', email)
+        .preload('role')
+        .preload('society')
+        .first()
+
+      if (!user) {
+        return response.unauthorized({
+          status: 'error',
+          message: 'Invalid credentials',
+        })
+      }
+
+      // Verify password
+      if (!(await hash.verify(user.passwordHash, password))) {
+        return response.unauthorized({
+          status: 'error',
+          message: 'Invalid credentials',
+        })
+      }
+
+      // Create token
+      const token = await AccessToken.create({
+        userId: user.id,
+        token: this.generateSecureToken(),
+        expiresAt: DateTime.now().plus({ days: 7 }), // 7 day expiration
+      })
+
+      // Prepare user data without sensitive information
+      const userData = user.serialize()
+      delete userData.passwordHash
+
+      return response.ok({
+        status: 'success',
+        message: 'Login successful',
+        data: {
+          user: userData,
+          token: {
+            value: token.token,
+            expires_at: token.expiresAt,
+            type: 'bearer',
+          },
+        },
+      })
+    } catch (error) {
+      return response.internalServerError({
+        status: 'error',
+        message: 'Authentication failed',
+        errors: error.message,
+      })
+    }
+  }
+
+  // POST /Register
+  async register({ request, response }: HttpContext) {
+    const payload = await request.validateUsing(createUserValidator)
+    console.log('Password from validated payload:', payload.password)
+    const user = await User.create({
+      name: payload.name,
+      email: payload.email,
+      phone: payload.phone,
+      roleId: payload.roleId,
+      societyId: payload.societyId,
+      passwordHash: payload.password,
+    })
+
+    return response.created({
+      message: 'User registered successfully',
+      data: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+      },
+    })
+  }
+
   // GET /users
   async index({ response }: HttpContext) {
     try {

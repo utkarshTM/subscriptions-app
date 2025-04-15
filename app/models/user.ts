@@ -1,11 +1,21 @@
 import { DateTime } from 'luxon'
-import { BaseModel, column, belongsTo, hasMany } from '@adonisjs/lucid/orm'
-import type { BelongsTo, HasMany } from '@adonisjs/lucid/types/relations'
+import hash from '@adonisjs/core/services/hash'
+import { compose } from '@adonisjs/core/helpers'
+import { BaseModel, column, belongsTo, hasMany, beforeSave } from '@adonisjs/lucid/orm'
+import { withAuthFinder } from '@adonisjs/auth/mixins/lucid'
+import { Timestamp } from '#helpers/model_timestamp_helper'
+import type { HasMany, BelongsTo } from '@adonisjs/lucid/types/relations'
 import Role from './role.js'
 import Society from './society.js'
 import AdminRequest from './admin_request.js'
+import AccessToken from './access_token.js'
 
-export default class User extends BaseModel {
+const AuthFinder = withAuthFinder(() => hash.use('bcrypt'), {
+  uids: ['email'],
+  passwordColumnName: 'passwordHash',
+})
+
+export default class User extends compose(BaseModel, Timestamp, AuthFinder) {
   @column({ isPrimary: true })
   declare id: number
 
@@ -15,11 +25,11 @@ export default class User extends BaseModel {
   @column()
   declare email: string
 
-  @column()
-  declare phone: string
+  @column({ serializeAs: null })
+  declare passwordHash: string
 
   @column()
-  declare passwordHash: string
+  declare phone: string
 
   @column()
   declare roleId: number
@@ -42,6 +52,9 @@ export default class User extends BaseModel {
 
   @hasMany(() => AdminRequest)
   declare adminRequests: HasMany<typeof AdminRequest>
+
+  @hasMany(() => AccessToken)
+  declare accessTokens: HasMany<typeof AccessToken>
 }
 
 // import { DateTime } from 'luxon'

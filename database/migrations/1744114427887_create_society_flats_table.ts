@@ -6,8 +6,20 @@ export default class SocietyFlats extends BaseSchema {
   async up() {
     this.schema.createTable(this.tableName, (table) => {
       table.increments('id').primary()
-      table.integer('society_id').unsigned().references('id').inTable('societies').notNullable()
-      table.integer('block_id').unsigned().references('id').inTable('society_blocks').notNullable()
+      table
+        .integer('society_id')
+        .unsigned()
+        .references('id')
+        .inTable('societies')
+        .notNullable()
+        .onDelete('CASCADE')
+      table
+        .integer('block_id')
+        .unsigned()
+        .references('id')
+        .inTable('society_blocks')
+        .notNullable()
+        .onDelete('CASCADE')
       table.string('flat_number', 50).notNullable()
       table.enum('flat_type', ['1BHK', '2BHK', '3BHK', 'Penthouse']).notNullable()
       table.boolean('is_occupied').defaultTo(false)
@@ -20,6 +32,6 @@ export default class SocietyFlats extends BaseSchema {
   }
 
   async down() {
-    this.schema.dropTable(this.tableName)
+    this.schema.dropTableIfExists(this.tableName)
   }
 }

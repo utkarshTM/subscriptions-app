@@ -1,54 +1,33 @@
-import type { HttpContext } from '@adonisjs/core/http'
-import type { NextFn } from '@adonisjs/core/types/http'
-import { Auth } from '#utils/auth'
-
-interface AuthRequest extends Request {
-  isAuthenticated: boolean
-}
+// app/middleware/auth_middleware.ts
+import { HttpContext } from '@adonisjs/core/http'
+import AccessToken from '#models/access_token'
+import { DateTime } from 'luxon'
 
 export default class AuthMiddleware {
-  public async handle(ctx: HttpContext, next: NextFn) {
-    try {
-      // Extract the token from the Authorization header
-      const token = Auth.getTokenFromHeader(ctx.request.headers().authorization || '')
+  async handle(ctx: HttpContext, next: () => Promise<void>) {
+    const authHeader = ctx.request.header('authorization')
 
-      if (!token) {
-        return ctx.response.status(401).send({
-          success: false,
-          error: {
-            code: 401,
-            message: 'Unauthorized: No token provided',
-          },
-        })
-      }
-
-      // Verify the token and get the user
-      const auth = await Auth.verifyToken(token)
-
-      if (!auth) {
-        return ctx.response.status(401).send({
-          success: false,
-          error: {
-            code: 401,
-            message: 'Unauthorized: Invalid token',
-          },
-        })
-      }
-
-      // Attach the authenticated user to the context
-      ;(ctx.request.qs() as unknown as AuthRequest).isAuthenticated = true
-      ctx.auth = auth
-      // Proceed to next middleware or route handler
-      return next()
-    } catch (error) {
-      console.error('Authentication error:', error)
-      return ctx.response.status(401).send({
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return ctx.response.unauthorized({
         success: false,
-        error: {
-          code: 401,
-          message: 'Unauthorized: Authentication failed',
-        },
+        error: { code: 401, message: 'Unauthorized: No token provided' },
       })
     }
+
+    const token = authHeader.substring(7)
+    const accessToken = await AccessToken.query().where('token', token).preload('user').first()
+
+    if (!accessToken || (accessToken.expiresAt && accessToken.expiresAt < DateTime.now())) {
+      return ctx.response.unauthorized({
+        success: false,
+        error: { code: 401, message: 'Invalid or expired token' },
+      })
+    }
+
+    ctx.auth = { user: accessToken.user } as any
+
+    ctx.accessToken = accessToken
+
+    await next()
   }
 }

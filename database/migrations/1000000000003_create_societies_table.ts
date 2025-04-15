@@ -1,3 +1,4 @@
+// database/migrations/3_create_societies_table.ts
 import { BaseSchema } from '@adonisjs/lucid/schema'
 
 export default class Societies extends BaseSchema {

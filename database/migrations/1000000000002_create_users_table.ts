@@ -17,13 +17,6 @@ export default class Users extends BaseSchema {
         .inTable('roles')
         .onDelete('CASCADE')
         .notNullable()
-      table
-        .integer('society_id')
-        .unsigned()
-        .references('id')
-        .inTable('societies')
-        .onDelete('CASCADE')
-        .notNullable()
       table.timestamp('created_at', { useTz: true }).notNullable()
       table.timestamp('updated_at', { useTz: true }).notNullable()
     })

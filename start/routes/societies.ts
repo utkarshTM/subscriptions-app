@@ -23,7 +23,7 @@ export default function societiesRoutes() {
     .group(() => {
       SocietyBlocksController
       router.get('/', [SocietyBlocksController, 'index'])
-      router.get('/', [SocietyBlocksController, 'show'])
+      router.get('/:id', [SocietyBlocksController, 'show'])
       router.post('/', [SocietyBlocksController, 'store'])
       router.put('/', [SocietyBlocksController, 'update'])
       router.delete('/', [SocietyBlocksController, 'destroy'])
@@ -33,7 +33,7 @@ export default function societiesRoutes() {
   router
     .group(() => {
       router.get('/', [SocietyFlatsController, 'index'])
-      router.get('/', [SocietyFlatsController, 'show'])
+      router.get('/:id', [SocietyFlatsController, 'show'])
       router.post('/', [SocietyFlatsController, 'store'])
       router.put('/', [SocietyFlatsController, 'update'])
       router.delete('/', [SocietyFlatsController, 'destroy'])
@@ -52,7 +52,7 @@ export default function societiesRoutes() {
   router
     .group(() => {
       router.get('/', [SocietyAmenitiesController, 'index'])
-      router.get('/', [SocietyAmenitiesController, 'show'])
+      router.get('/:id', [SocietyAmenitiesController, 'show'])
       router.post('/', [SocietyAmenitiesController, 'store'])
       router.put('/', [SocietyAmenitiesController, 'update'])
       router.delete('/', [SocietyAmenitiesController, 'destroy'])

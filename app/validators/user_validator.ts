@@ -5,7 +5,7 @@ export const createUserValidator = vine.compile(
     name: vine.string().trim().minLength(3).maxLength(255),
     email: vine.string().trim().email(),
     phone: vine.string().trim().minLength(10).maxLength(15),
-    passwordHash: vine.string().minLength(6),
+    password: vine.string().minLength(6),
     roleId: vine.number().exists(async (db, value) => {
       const role = await db.from('roles').where('id', value).first()
       return !!role
@@ -22,7 +22,7 @@ export const updateUserValidator = vine.compile(
     name: vine.string().trim().minLength(3).maxLength(255).optional(),
     email: vine.string().trim().email().optional(),
     phone: vine.string().trim().minLength(10).maxLength(15).optional(),
-    passwordHash: vine.string().minLength(6).optional(),
+    password: vine.string().minLength(6).optional(),
     roleId: vine.number().optional(),
     societyId: vine.number().optional(),
   })

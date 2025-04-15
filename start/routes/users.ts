@@ -14,9 +14,10 @@ export default function userRoutes() {
       router.post('/', [UsersController, 'store'])
       router.put('/:id', [UsersController, 'update'])
       router.delete('/:id', [UsersController, 'destroy'])
+      router.post('/login', [UsersController, 'login'])
+      router.post('/register', [UsersController, 'register'])
     })
     .prefix('/users')
-    .use([middleware.auth()])
 
   router
     .group(() => {
