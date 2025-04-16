@@ -9,11 +9,6 @@ import TenantProfilesController from '#controllers/tenant_profiles_controller'
 export default function userRoutes() {
   router
     .group(() => {
-      router.get('/', [UsersController, 'index'])
-      router.get('/:id', [UsersController, 'show'])
-      router.post('/', [UsersController, 'store'])
-      router.put('/:id', [UsersController, 'update'])
-      router.delete('/:id', [UsersController, 'destroy'])
       router.post('/login', [UsersController, 'login'])
       router.post('/register', [UsersController, 'register'])
     })

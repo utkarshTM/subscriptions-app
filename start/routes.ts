@@ -1,3 +1,23 @@
+import router from '@adonisjs/core/services/router'
+import appRoutes from './routes/roles.js'
+import notificationsRoutes from './routes/notifications.js'
+import societiesRoutes from './routes/societies.js'
+import userRoutes from './routes/users.js'
+import passwordRoutes from './routes/passwords.js'
+
+router.get('/', async () => {
+  return { hello: 'world' }
+})
+
+router
+  .group(() => {
+    userRoutes()
+    societiesRoutes()
+    appRoutes()
+    notificationsRoutes()
+    passwordRoutes()
+  })
+  .prefix('/api')
 // /*
 // |--------------------------------------------------------------------------
 // | Routes file
@@ -49,22 +69,3 @@
 //     notifications()
 //   })
 //   .prefix('/api')
-import router from '@adonisjs/core/services/router'
-import appRoutes from './routes/roles.js'
-import notificationsRoutes from './routes/notifications.js'
-import societiesRoutes from './routes/societies.js'
-import userInteractionsRoutes from './routes/user_interactions.js'
-import userRoutes from './routes/users.js'
-
-router.get('/', async () => {
-  return { hello: 'world' }
-})
-
-router
-  .group(() => {
-    userRoutes()
-    societiesRoutes()
-    appRoutes()
-    notificationsRoutes()
-  })
-  .prefix('/api')

@@ -1,21 +1,11 @@
-import User from '#models/user'
-import SendResponse from '#helpers/send_response_helper'
 import type { HttpContext } from '@adonisjs/core/http'
-import hash from '@adonisjs/core/services/hash'
-import { createUserValidator, updateUserValidator } from '#validators/user_validator'
-import AccessToken from '#models/access_token'
-import { DateTime } from 'luxon'
-import crypto from 'crypto'
+import { createUserValidator } from '#validators/user_validator'
+import UserService from '#services/user_service'
 
 export default class UsersController {
-  private generateSecureToken(): string {
-    return crypto.randomBytes(64).toString('hex')
-  }
-
   async login({ request, response }: HttpContext) {
     const { email, password } = request.only(['email', 'password'])
 
-    // Basic validation
     if (!email || !password) {
       return response.badRequest({
         status: 'error',
@@ -24,44 +14,24 @@ export default class UsersController {
     }
 
     try {
-      // Find user with relationships
-      const user = await User.query()
-        .where('email', email)
-        .preload('role')
-        .preload('society')
-        .first()
+      const result = await UserService.authenticate(email, password)
 
-      if (!user) {
+      if (!result.success || !result.user) {
         return response.unauthorized({
           status: 'error',
-          message: 'Invalid credentials',
+          message: result.reason,
         })
       }
 
-      // Verify password
-      if (!(await hash.verify(user.passwordHash, password))) {
-        return response.unauthorized({
-          status: 'error',
-          message: 'Invalid credentials',
-        })
-      }
-
-      // Create token
-      const token = await AccessToken.create({
-        userId: user.id,
-        token: this.generateSecureToken(),
-        expiresAt: DateTime.now().plus({ days: 7 }), // 7 day expiration
-      })
-
-      // Prepare user data without sensitive information
-      const userData = user.serialize()
-      delete userData.passwordHash
+      // ✅ TypeScript now knows result.user is defined
+      const token = await UserService.createToken(result.user.id)
+      const user = UserService.serializeUser(result.user)
 
       return response.ok({
         status: 'success',
         message: 'Login successful',
         data: {
-          user: userData,
+          user,
           token: {
             value: token.token,
             expires_at: token.expiresAt,
@@ -78,97 +48,94 @@ export default class UsersController {
     }
   }
 
-  // POST /Register
   async register({ request, response }: HttpContext) {
     const payload = await request.validateUsing(createUserValidator)
-    console.log('Password from validated payload:', payload.password)
-    const user = await User.create({
-      name: payload.name,
-      email: payload.email,
-      phone: payload.phone,
-      roleId: payload.roleId,
-      societyId: payload.societyId,
-      passwordHash: payload.password,
-    })
 
-    return response.created({
-      message: 'User registered successfully',
-      data: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-      },
-    })
-  }
-
-  // GET /users
-  async index({ response }: HttpContext) {
     try {
-      const users = await User.query().preload('role').preload('society')
-      return response.status(200).send(SendResponse.success('Users fetched successfully', users))
-    } catch (error) {
-      return response
-        .status(500)
-        .send(SendResponse.error('Failed to fetch users', 500, error.message))
-    }
-  }
+      const user = await UserService.createUser(payload)
+      const userData = UserService.serializeUser(user)
 
-  // GET /users/:id
-  async show({ params, response }: HttpContext) {
-    try {
-      const user = await User.findOrFail(params.id)
-      await user.load('role')
-      await user.load('society')
-      return response.status(200).send(SendResponse.success('User fetched successfully', user))
+      return response.created({
+        message: 'User registered successfully',
+        data: userData,
+      })
     } catch (error) {
-      return response
-        .status(500)
-        .send(SendResponse.error('Failed to fetch user', 500, error.message))
-    }
-  }
-
-  // POST /users
-  async store({ request, response }: HttpContext) {
-    try {
-      const payload = await request.validateUsing(createUserValidator)
-      const user = await User.create(payload)
-      return response.status(201).send(SendResponse.success('User created successfully', user))
-    } catch (error) {
-      return response
-        .status(500)
-        .send(SendResponse.error('Failed to create user', 500, error.message))
-    }
-  }
-
-  // PUT /users/:id
-  async update({ params, request, response }: HttpContext) {
-    try {
-      const user = await User.findOrFail(params.id)
-      const payload = await request.validateUsing(updateUserValidator)
-      user.merge(payload)
-      await user.save()
-      return response.status(200).send(SendResponse.success('User updated successfully', user))
-    } catch (error) {
-      return response
-        .status(500)
-        .send(SendResponse.error('Failed to update user', 500, error.message))
-    }
-  }
-
-  // DELETE /users/:id
-  async destroy({ params, response }: HttpContext) {
-    try {
-      const user = await User.findOrFail(params.id)
-      await user.delete()
-      return response.status(200).send(SendResponse.success('User deleted successfully', user))
-    } catch (error) {
-      return response
-        .status(500)
-        .send(SendResponse.error('Failed to delete user', 500, error.message))
+      return response.internalServerError({
+        status: 'error',
+        message: 'User registration failed',
+        errors: error.message,
+      })
     }
   }
 }
+
+//   // GET /users
+//   async index({ response }: HttpContext) {
+//     try {
+//       const users = await User.query().preload('role').preload('society')
+//       return response.status(200).send(SendResponse.success('Users fetched successfully', users))
+//     } catch (error) {
+//       return response
+//         .status(500)
+//         .send(SendResponse.error('Failed to fetch users', 500, error.message))
+//     }
+//   }
+
+//   // GET /users/:id
+//   async show({ params, response }: HttpContext) {
+//     try {
+//       const user = await User.findOrFail(params.id)
+//       await user.load('role')
+//       await user.load('society')
+//       return response.status(200).send(SendResponse.success('User fetched successfully', user))
+//     } catch (error) {
+//       return response
+//         .status(500)
+//         .send(SendResponse.error('Failed to fetch user', 500, error.message))
+//     }
+//   }
+
+//   // POST /users
+//   async store({ request, response }: HttpContext) {
+//     try {
+//       const payload = await request.validateUsing(createUserValidator)
+//       const user = await User.create(payload)
+//       return response.status(201).send(SendResponse.success('User created successfully', user))
+//     } catch (error) {
+//       return response
+//         .status(500)
+//         .send(SendResponse.error('Failed to create user', 500, error.message))
+//     }
+//   }
+
+//   // PUT /users/:id
+//   async update({ params, request, response }: HttpContext) {
+//     try {
+//       const user = await User.findOrFail(params.id)
+//       const payload = await request.validateUsing(updateUserValidator)
+//       user.merge(payload)
+//       await user.save()
+//       return response.status(200).send(SendResponse.success('User updated successfully', user))
+//     } catch (error) {
+//       return response
+//         .status(500)
+//         .send(SendResponse.error('Failed to update user', 500, error.message))
+//     }
+//   }
+
+//   // DELETE /users/:id
+//   async destroy({ params, response }: HttpContext) {
+//     try {
+//       const user = await User.findOrFail(params.id)
+//       await user.delete()
+//       return response.status(200).send(SendResponse.success('User deleted successfully', user))
+//     } catch (error) {
+//       return response
+//         .status(500)
+//         .send(SendResponse.error('Failed to delete user', 500, error.message))
+//     }
+//   }
+// }
 
 // import User from '#models/user'
 // import SendResponse from '#helpers/send_response_helper'

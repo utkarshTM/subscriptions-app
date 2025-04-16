@@ -88,7 +88,7 @@
     "cheerio": "^1.0.0",
     "date-fns": "^3.6.0",
     "dotenv": "^16.4.5",
-    "edge.js": "^6.2.0",
+    "edge.js": "^6.2.1",
     "fs-extra": "^11.2.0",
     "jsonwebtoken": "^9.0.2",
     "luxon": "^3.4.4",
